@@ -207,6 +207,7 @@ rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.
       
       return((rPDD_unitaire_pour_vol(S0=S0+ delta_theta,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma + delta_theta,alea=alea) 
               - rPDD_unitaire_pour_vol(S0=S0- delta_theta,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma - delta_theta,alea=alea))/(2*delta_theta))
+    
     } else{ if (greek == "Saga"){
       
       return((rPDD_unitaire_pour_vol(S0=S0,Sa=Sa + delta_theta,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma,alea=alea) 
