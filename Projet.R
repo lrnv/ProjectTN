@@ -20,7 +20,7 @@ rPDD <- function(n=1,S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,
   rPDD_unitaire <- function(naif,S0,Sa){
     # Commençons par calculer la trajectoire de S : 
     # S suit une dynamique de black-sholes, donc la solution explicite de BS nous donne :
-    
+
       lambda <- function(S0,lambdaPrecedent = 0){
             
               alea <- rnorm(1/delta_t)
