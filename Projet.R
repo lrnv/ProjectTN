@@ -1,8 +1,6 @@
 ######### Premier script R du projet de technique numérique. 
 library(magrittr)
-########### Premierre chose a faire : setup certians paramètres : 
-M = 100 # nombre de simulations de monte-carlo.
-set.seed(100) # seed
+set.seed(100) # On fixe la seed pour la reproductibilité
 
 #1 Une seul actif et une seule periode 
 
@@ -94,61 +92,74 @@ list(
 
 
 
-
-df <- data.frame
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Par exemple, plutot que de faire du MC, on peut juste sortir
+# un plot de la densitée empirique des data générées. 
+rPDD(n=1000,
+     S0=90,
+     Sa=130,
+     delta_t = 1/2,
+     alpha=0.2,
+     r=0.015,
+     sigma=0.45,
+     raffinement=FALSE,
+     Temps = 1
+     ) %>%
+  density %>%
+  plot
+# Pour cetains paramètres, ça dépasse 120. Ce qui est bizare. 
+# Donc la formule va pas. 
+# Meme pour Temps = 1 ça épasse des fois; SheiBe
 
 
-#1.2 Calcul de la sensibilit? par diff?rences finies
 
 
-sensibilite <- function(S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE, greek="Vega", delta_theta= 0.00001){
-  if (greek == "Vega"){
-    PDD_plus <-  mean(rPDD(n=10000,sigma = sigma + delta_theta, raffinement = TRUE))
-    PDD_moins <- mean(rPDD(n=10000,sigma = sigma - delta_theta, raffinement = TRUE))
-  }
-  else if (greek == "Rho"){
-    PDD_plus <-  mean(rPDD(n=10000,r = r + delta_theta, raffinement = TRUE))
-    PDD_moins <- mean(rPDD(n=10000,r = r - delta_theta, raffinement = TRUE))
-  }
-  else if (greek == "Delta"){
-    PDD_plus <-  mean(rPDD(n=10000,S0 = S0 + delta_theta, raffinement = TRUE))
-    PDD_moins <- mean(rPDD(n=10000,S0 = S0 - delta_theta, raffinement = TRUE))
-  }
-  return((PDD_plus-PDD_moins)/delta_theta)
-}
+
+
+
+
+
+
+
+
+
+
+
+#1.2 Calcul de la sensibilit? par differences finies
+
+# sensibilite <- function(S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE, greek="Vega", delta_theta= 0.00001){
+#   if (greek == "Vega"){
+#     PDD_plus <-  mean(rPDD(n=10000,sigma = sigma + delta_theta, raffinement = TRUE))
+#     PDD_moins <- mean(rPDD(n=10000,sigma = sigma - delta_theta, raffinement = TRUE))
+#   }
+#   else if (greek == "Rho"){
+#     PDD_plus <-  mean(rPDD(n=10000,r = r + delta_theta, raffinement = TRUE))
+#     PDD_moins <- mean(rPDD(n=10000,r = r - delta_theta, raffinement = TRUE))
+#   }
+#   else if (greek == "Delta"){
+#     PDD_plus <-  mean(rPDD(n=10000,S0 = S0 + delta_theta, raffinement = TRUE))
+#     PDD_moins <- mean(rPDD(n=10000,S0 = S0 - delta_theta, raffinement = TRUE))
+#   }
+#   return((PDD_plus-PDD_moins)/delta_theta)
+# }
+#   
+#   
+# sensibilite()
+# sensibilite(greek = "Rho")
+# sensibilite(greek = "Delta")  
+#   
   
-  
-sensibilite()
-sensibilite(greek = "Rho")
-sensibilite(greek = "Delta")  
-  
-  
-#greek doit ?tre "Vaga, "Rho" ou "Delta"
 
+# Générateur aléatoire des greeques. Le paramètre "greek" doit être "Vega","Rho","Delata" ou "Saga"
 rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE, Temps = 1, delta_theta=10^(-5)){
-  # Calcul d'une PDD : 
+  
+  # Setup du générateur :
   p_k <- function(x,y){
     return(exp(-2*log(x/Sa)*log(y/Sa)/(sigma^2*delta_t)))
   }
   naif=!raffinement
   rPDD_unitaire_pour_vol <- function(S0=S0,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r,sigma=sigma, Temps = Temps,alea){
+    
+    #La différence entre celle la et la précédente est que laléa a été fixé
     # Commençons par calculer la trajectoire de S : 
     # S suit une dynamique de black-sholes, donc la solution explicite de BS nous donne :
     
@@ -174,14 +185,14 @@ rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.
     
     lambda_rez <- list()
     lambda_rez[[1]] <- lambda(S0,0)
-    # if(Temps > 1){
-    #   for (i in 2:Temps){
-    #     lambda_rez[[i]] <- lambda(lambda_rez[[i-1]][1],lambda_rez[[i-1]][2])
-    #     
-    #     # La formule est juste la même : On relance avec un nouveau point de départ S0 correspondant a la derière valeur obtenue au cout d'avent, 
-    #     # et le lambda précédent qui est 0 au début.
-    #   }
-    # }
+    if(Temps > 1){
+      for (i in 2:Temps){
+        lambda_rez[[i]] <- lambda(lambda_rez[[i-1]][1],lambda_rez[[i-1]][2])
+
+        # La formule est juste la même : On relance avec un nouveau point de départ S0 correspondant a la derière valeur obtenue au cout d'avent,
+        # et le lambda précédent qui est 0 au début.
+      }
+    }
     return(lambda_rez %>% 
       lapply(function(x) return(x[[2]])) %>%
       tail(1) %>% 
@@ -220,10 +231,12 @@ rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.
 
 
 
-rGreek(1000,"Vega")
+rGreek(1000,"Vega") %>% plot
 rGreek(1000,"Vega") %>% mean
 rGreek(1000,"Rho") %>% mean
 rGreek(1000,"Delta") %>% mean
+
+rGreek(10000,"Vega") %>% density %>% plot
 
 
 
