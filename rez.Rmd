@@ -1,0 +1,198 @@
+---
+title: "Untitled"
+author: "Pierre MARJOLET, Oskar LAVERNY"
+date: "4 décembre 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(magrittr)
+library(dplyr)
+```
+
+## Explication du TD/TP3
+
+# l'idée est de calculer une PDD.
+
+$S.a <- 120$
+
+# dépréciation si les deux evennements suivants e réalisent :
+S.t <= 80% de S.a
+max(S.u, pour u dans ]t-1/2,t]) <= S.a
+
+la perte de valeur est ans ce cas de S.a - S.t
+
+dymanique de lactif :
+dS.t = st (rdt + sigma dWt) avec S.0 = 100
+
+r = 1,5%
+sigma = 45%
+W un brownien standard.
+
+On se propose destimer la PDD sur 1an (T = 1) définie comme :
+
+PDD = expérance de exp(-rT) * (S.a - S.T) indic(S.T <= 80% S.a) indic(max(S.u, pour u dans ]t-1/2,t]) <= S.a)
+
+Méthode naive : On co,sidère que lactif suit une dynamique simple (celle ci-dessut),
+et on va utiliser montécarlo pour estimer la PDD, en se basant sur la discrétisation d'EULER de l'eds :
+
+Shéma d'euler de la PDD' :
+
+  $$S_t_{K+1} = S_t_K (1 + r\Delta_t + \sigma \sqrt{\Delta_t}\epsilon)$$
+
+  En se basant sur cette discrétisation, on peut proposer une approximation du sup de Su pour $u$ dans $[1/2,1]$ :
+
+  $$sup(S_u) =  \approx max{S_t_{N/2},...,S_t_N}$$
+
+  
+  
+  
+A partir de ces éléments et les valeurs initiales des différents paramètres, on peut avoir la PDD : 
+
+
+$$PDD_0 \approx \sum_{i=1}^{N} (S_a - S_i)^{+} \mathbb{1}_{S_1^i < 80%}\mathbb{1}_{max(S_{t_j};j = N/2 ... N) < S_a}$$
+```{r Question 1 : Application du shéma d'euler sur uen grille de N Pas}
+# Génération d'un exemplaire de monté-carlo. 
+monter_carla <- function(S0=100,Sa=120,delta_t = 1/200,seuil=0.8,r=0.015,sigma=0.45){
+  S <- S0 * cumprod(1+r * delta_t + sigma * sqrt(delta_t) * rnorm(1/delta_t))
+# Maintenant qu'on a S, on va chercher la PDD : 
+
+  # Approximation du sup sur 6mois : 
+  sup_6_mois <- max(S[(floor(length(S)/2)+1):length(S)])
+  # Clacul de la PDD : 
+  return(max(Sa-S[length(S)],0) * (S[length(S)] < seuil * Sa) * (sup_6_mois < Sa))
+
+}
+
+M = 100000
+PDD_0 <- rep(NA,M) %>%
+  sapply(.,function(x) {
+    return(monter_carla(delta_t = 1/2))
+  }) %T>%
+  {print(mean(.))}
+
+# La proba que la PDD soit positive est alors : 
+mean(PDD_0 > 0)
+# Cette proba est utiliser pour l'allocation d'actif.
+
+```
+
+# Méthode rafinée : Amélioration de la méthode : 
+
+# On va considéré l'utilisation de la loi du amximum ( dite méthode par "Pont Brownien")
+
+# On va donc considérer la deuxième periode ]1/2;1], sur laquelle j'observe la trajectoire uniquement sur des points discrets. 
+
+# Entre chaque point discret (tk et tk+1), a-ton franchit la barrière ? 
+
+Si on rajoute des points de discrétiation, l'erreur effectué sur le calcul de la PDD est toujours de l'ordre de 1/racine(nb de pas) (méthode naive)
+
+On va donc proposer une méthode basée sur la simulation du maximum entre tk et tk+1 ( on a pour l'instant Stk via Euler, ne dépassant pas Sa.) On simule St(k+1) : 
+S'il dépasse la barière, PDD = 0
+S'il dépasse pas, on va simuler un maximum de la trajectoire entre tk et tk+1
+
+max{t \in [tk,tk+1]} St (simulé)
+
+Si ce max simulé franchit la barrière, on continue. 
+
+Comment simuler ce max ? 
+
+
+On connais sa loi : sa fonction de survie est donnée par : 
+
+\mathbb{P}(max_{u \in [t_k,t_{k+1}]} Su > Sa | S_tk = x, S_tk+1 = y) = exp(-2(x - Sa)(y-Sa)/\sigma^2 \delta t)
+
+Appelons p_k cette proba. 
+
+On l'integre dans lec alcul de la provision de cette manière : 
+
+pour chaque couple tk & tk+1, on calcule cette proba ca ron a x et y, on tire au hazard une var Unif(0,1) pour appliquer cette proba. Si l'evenement est réaliser, la PDD vaut 0 car on considère qu'il y a eut dépassement de la barrière. 
+
+```{r Question 2 : méthode rafinée.}
+
+p_k <- function(u,x,y,sigma = 0.45,delta_t = 1/200){
+  return(exp(-2*(x-u)*(y-u)/(sigma^2 * delta_t)))
+}
+  
+
+
+# Appliquons le rfinement : 
+monter_carla <- function(S0=100,Sa=120,delta_t = 1/200,seuil=0.8,r=0.015,sigma=0.45,rafinement=TRUE){
+  S <- S0 * cumprod(1+r * delta_t + sigma * sqrt(delta_t) * rnorm(1/delta_t))
+
+# Occupons-nous du raffinement : 
+  p <- S^0
+  if(rafinement){
+      p <- S
+    p[1] <- 1
+    for (i in 2:(1/delta_t)){
+      p[i] <- p_k(Sa,S[i],S[i-1],sigma=sigma,delta_t=delta_t)
+    }
+    p <- p > runif(1/delta_t)
+  }
+
+  
+  # Approximation du sup sur 6mois : 
+  sup_6_mois <- max(S[(floor(length(S)/2)+1):length(S)])
+  # Clacul de la PDD : 
+  return(prod(p)*max(Sa-S[length(S)],0) * (S[length(S)] < seuil * Sa) * (sup_6_mois < Sa))
+#########" p ou prod(p) ???
+}
+
+M = 10000
+PDD_0 <- rep(NA,M) %>%
+  sapply(.,function(x) {
+    return(monter_carla(delta_t = 1/200))
+  }) %T>%
+  {print(mean(.))}
+
+# La proba que la PDD soit positive est alors : 
+mean(PDD_0 > 0)
+```
+
+
+
+
+
+```{r ex}
+monter_carla_sensi_sigma <- function(S0=100,Sa=120,delta_t = 1/200,seuil=0.8,r=0.015,sigma=0.45,delta_sigma=10^(-6)){
+  
+  data <- rnorm(1/delta_t)
+  S <- S0 * cumprod(1+r * delta_t + (sigma+delta_sigma) * sqrt(delta_t) * data)
+# Maintenant qu'on a S, on va chercher la PDD : 
+
+  # Approximation du sup sur 6mois : 
+  sup_6_mois <- max(S[(floor(length(S)/2)+1):length(S)])
+  # Clacul de la PDD : 
+  pdd <- max(Sa-S[length(S)],0) * (S[length(S)] < seuil * Sa) * (sup_6_mois < Sa)
+  
+  # on recomence sur la perturbée : 
+    S1 <- S0 * cumprod(1+r * delta_t + sigma * sqrt(delta_t) * data)
+# Maintenant qu'on a S, on va chercher la PDD : 
+
+  # Approximation du sup sur 6mois : 
+  sup_6_mois1 <- max(S1[(floor(length(S1)/2)+1):length(S1)])
+  # Clacul de la PDD : 
+  pdd1 <- max(Sa-S1[length(S1)],0) * (S1[length(S1)] < seuil * Sa) * (sup_6_mois1 < Sa)
+  
+  return((pdd - pdd1)/delta_sigma)
+
+}
+
+
+
+M = 100000
+PDD_0_sensi <- rep(NA,M) %>%
+  sapply(.,function(x) {
+    return(monter_carla())
+  }) %T>%
+  {print(mean(.))}
+
+seq(from=0.000001,to=0.000002,by=0.0000001) %>% {plot(.,lapply(., function(x) {return(PDD_sigma(x))}))}
+
+```
+
+
+
