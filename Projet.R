@@ -62,6 +62,64 @@ rPDD(M) %>% affichage
 rPDD(M,raffinement=TRUE) %>% affichage
 
 
+
+#1.2 Calcul de la sensibilité par différences finies
+
+
+sensibilite <- function(S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE, greek="Vega", delta_theta= 0.00001){
+  if (greek == "Vega"){
+    PDD_plus <-  mean(rPDD(n=10000,sigma = sigma + delta_theta, raffinement = TRUE))
+    PDD_moins <- mean(rPDD(n=10000,sigma = sigma - delta_theta, raffinement = TRUE))
+  }
+  else if (greek == "Rho"){
+    PDD_plus <-  mean(rPDD(n=10000,r = r + delta_theta, raffinement = TRUE))
+    PDD_moins <- mean(rPDD(n=10000,r = r - delta_theta, raffinement = TRUE))
+  }
+  else if (greek == "Delta"){
+    PDD_plus <-  mean(rPDD(n=10000,S0 = S0 + delta_theta, raffinement = TRUE))
+    PDD_moins <- mean(rPDD(n=10000,S0 = S0 - delta_theta, raffinement = TRUE))
+  }
+  return((PDD_plus-PDD_moins)/delta_theta)
+}
+  
+  
+sensibilite()
+sensibilite(greek = "Rho")
+sensibilite(greek = "Delta")  
+  
+  
+#greek doit être "Vaga, "Rho" ou "Delta"
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ########### Code diephan ; 
 
 PDDRaffinee<-function(r,sigma,T,alpha){
