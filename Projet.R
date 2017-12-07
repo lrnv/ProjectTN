@@ -13,7 +13,7 @@ set.seed(100) # seed
 rPDD <- function(n=1,S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE){
   # Probabilité de franchissement du seuil dans le cas de pont brownien : 
   p_k <- function(x,y){
-    return(exp(-2*log(x/Sa)*log(y/Sa)/((sigma^2)*delta_t)))
+    return(exp(-2*log(x/Sa)*log(y/Sa)/(sigma^2*delta_t)))
   }
   
   # Calcul d'une PDD : 
@@ -29,6 +29,7 @@ rPDD <- function(n=1,S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,
       if(!naif){
         p <- c(1,(p_k(c(NA,S),c(S,NA))[2:(length(S)-1)]))
         p <- p > runif((1/delta_t)-1)
+        p[1:(floor(1/delta_t)+1)] <- TRUE
       }
     
     # Maintenant qu'on a la trajectoire de S, calculons la PDD_0 correspondante : 
