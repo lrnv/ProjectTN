@@ -61,7 +61,7 @@ rPDD(M) %>% affichage
 rPDD(M,raffinement=TRUE) %>% affichage
 
 
-
+########### Code diephan ; 
 
 PDDRaffinee<-function(r,sigma,T,alpha){
   J=365
@@ -89,6 +89,9 @@ PDDRaffinee<-function(r,sigma,T,alpha){
       for(j in 1:N){
         if (Simu[j,i]>Sa||Simu[j,(i+1)]>Sa) condition[j,i]=0
         else{
+          
+          
+######### La formule est ici. 
           probas[j]=exp(-2*log((Simu[j,i]/Sa))*(log(Simu[j,(i+1)]/Sa))/(sigma^2*dt))
           if(runif(1,0,1)<probas[j]){
             condition[j,i]=0
