@@ -57,6 +57,8 @@
           multiply_by(exp(-r * (1:Temps))) %>% # Actualisation des différents lambdas.
           tail(1) %>%
           return
+      # Version sans magrittr : 
+      # return(tail(unlist(lapply(lambda_rez,function(x) return(x[[2]])))*exp(-r * (1:Temps)),1))
 }
 
 ##################################################################
@@ -83,6 +85,8 @@ rPDD <- function(n=1, S0=100, Sa=120, delta_t = 1/365, alpha=0.2,
     )
   }
   rep(NA,n) %>% sapply(.,to_apply) %>% return
+  # version sans maggritr : 
+  # return(sapply(1:n,to_apply))
 }
 
 
@@ -130,5 +134,7 @@ rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.
     )
   }
   rep(NA,n) %>% sapply(.,to_apply) %>% return
+  # version sans maggritr : 
+  # return(sapply(1:n,to_apply))
 
 }

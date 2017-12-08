@@ -70,11 +70,10 @@ rPDD(1000) %>% density %>% plot
 
 #1.2 Calcul de la sensibilite par differences finies
 
-rGreek(1000,"Vega") %>% plot
-rGreek(1000,"Vega") %>% mean
-rGreek(1000,"Rho") %>% mean
-rGreek(1000,"Delta") %>% mean
-
+rGreek(1000,"Vega") %>% hist
+rGreek(1000,"Vega") %>% hist
+rGreek(1000,"Rho") %>% hist
+rGreek(1000,"Delta") %>% hist
 rGreek(10000,"Vega") %>% density %>% plot
 
 

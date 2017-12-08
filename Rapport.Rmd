@@ -1,0 +1,39 @@
+---
+title: "Projet de Techniques numériques : Estimation d'une provision pour dépréciation durable"
+author: "LAVERNY Oskar, MARJOLET Pierre, BARRY Dieynaba"
+date: "8 décembre 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+####### Chunk permettant de set-up les paramètres par déffaut des chunk suivants. 
+knitr::opts_chunk$set(echo = TRUE)
+
+#### On en profite pour mettre en place les packages et les seeds.
+library(magrittr) # Les générateurs ont une version possible sans magrittr. peut-être qu'on rendra le projet sans ? Histoire de ne pas utiliser de packet, et de pouvoir dire qu'on a tout fait avec rbase. 
+# A voir.
+set.seed(100) # On fixe la seed pour la reproductibilité
+
+### On source les générateurs (utiliser "setwd()" si besoin pour se mettre dans le bon dossier.)
+source("Generateurs.R")
+```
+
+## Discution sur le sujet. 
+
+Bla bla bla.
+
+## Génération de la PDD avec ou sans rafinement 
+
+```{r generateurs}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
