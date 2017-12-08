@@ -9,28 +9,30 @@ set.seed(100) # On fixe la seed pour la reproductibilité
 
 # Fonction de simulation de PDD.
 rPDD <- function(n=1,S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE, Temps = 1){
+  
   # Probabilité de franchissement du seuil dans le cas de pont brownien : 
-  p_k <- function(x,y){
-    return(exp(-2*log(x/Sa)*log(y/Sa)/(sigma^2*delta_t)))
-  }
+  p_k <- function(x,y){ return(exp(-2*log(x/Sa)*log(y/Sa)/(sigma^2*delta_t))) }
   
   # Calcul d'une PDD : 
   rPDD_unitaire <- function(naif,S0,Sa){
-    # Commençons par calculer la trajectoire de S : 
-    # S suit une dynamique de black-sholes, donc la solution explicite de BS nous donne :
+
+    # Chacun des lambdas dépends de la valeur de l'actif en début de periode et 
+    # de la valeur du lambda précédent. Le rete n'est que simulation de l'actif. 
 
       lambda <- function(S0,lambdaPrecedent = 0){
-            
+          
+        # Commençons par calculer la trajectoire de S : 
+        # S suit une dynamique de black-sholes, donc la solution explicite de BS nous donne :
               alea <- rnorm(1/delta_t)
               S <- S0 * cumprod(1+r * delta_t + sigma * sqrt(delta_t) * alea)
-            
+              S <- S*(S > 0) # Histoire que le sous-jacent reste bien positif.
             
             # Gestion du raffinement par pont brownien : 
               p = S^0
               if(!naif){
                 p <- c(1,(p_k(c(NA,S),c(S,NA))[2:(length(S)-1)]))
-                p <- p > runif((1/delta_t)-1)
-                p[1:(floor(1/delta_t)+1)] <- TRUE
+                p <- p > runif((1/delta_t)-1) # donc p = true quand la barrière désactivante n'est pas franchie. 
+                p[1:(floor(1/delta_t)+1)] <- TRUE # Les 6 premiers mois sont toujours valides.
               }
             
             # Maintenant qu'on a la trajectoire de S, calculons la PDD_0 correspondante : 
@@ -46,15 +48,17 @@ rPDD <- function(n=1,S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,
       if(Temps > 1){
         for (i in 2:Temps){
           lambda_rez[[i]] <- lambda(lambda_rez[[i-1]][1],lambda_rez[[i-1]][2])
-          
-          # La formule est juste la même : On relance avec un nouveau point de départ S0 correspondant a la derière valeur obtenue au cout d'avent, 
+          # La formule est juste la même : 
+          # On relance avec un nouveau point de départ S0 correspondant a la derière valeur obtenue au cout d'avent, 
           # et le lambda précédent qui est 0 au début.
         }
       }
       lambda_rez %>% 
         lapply(function(x) return(x[[2]])) %>%
         unlist %>%
-        tail(1) %>% 
+       # tail(1) %>% 
+        multiply_by(exp(-r * (1:Temps))) %>%
+        tail(1) %>%
         return
   }
   
@@ -85,7 +89,8 @@ list(
     RafiT2 = rPDD(M,raffinement = TRUE,Temps = 2) %>% affichage,
     RafiT5 = rPDD(M,raffinement = TRUE,Temps = 5) %>% affichage,
     RafiT10 = rPDD(M,raffinement = TRUE,Temps = 10) %>% affichage,
-    RafiT15 = rPDD(M,raffinement = TRUE,Temps = 15) %>% affichage
+    RafiT15 = rPDD(M,raffinement = TRUE,Temps = 15) %>% affichage,
+    RafiT100 = rPDD(M,raffinement = TRUE,Temps = 100) %>% affichage
 ) %>% 
   do.call(rbind,.) %>% 
   data.frame
@@ -94,24 +99,22 @@ list(
 
 # Par exemple, plutot que de faire du MC, on peut juste sortir
 # un plot de la densitée empirique des data générées. 
-rPDD(n=1000,
-     S0=90,
-     Sa=130,
+vector <- rPDD(n=1000,
+     S0=100,
+     Sa=120,
      delta_t = 1/2,
      alpha=0.2,
      r=0.015,
      sigma=0.45,
      raffinement=FALSE,
-     Temps = 1
-     ) %>%
-  density %>%
-  plot
+     Temps = 10
+     ) %T>% {print(sum(.>120) + sum(. < 0))}
 # Pour cetains paramètres, ça dépasse 120. Ce qui est bizare. 
 # Donc la formule va pas. 
 # Meme pour Temps = 1 ça épasse des fois; SheiBe
 
 
-
+rPDD(1000) %>% density %>% plot
 
 
 
@@ -159,7 +162,7 @@ rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.
   naif=!raffinement
   rPDD_unitaire_pour_vol <- function(S0=S0,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r,sigma=sigma, Temps = Temps,alea){
     
-    #La différence entre celle la et la précédente est que laléa a été fixé
+    #La différence entre celle la et la précédente est que l'aléa a été fixé
     # Commençons par calculer la trajectoire de S : 
     # S suit une dynamique de black-sholes, donc la solution explicite de BS nous donne :
     
@@ -195,9 +198,10 @@ rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.
     }
     return(lambda_rez %>% 
       lapply(function(x) return(x[[2]])) %>%
-      tail(1) %>% 
-        unlist %>%
-      sum)
+      #  tail(1) %>% 
+        unlist %>% 
+        multiply_by(exp(-r * (1:length(.)))) %>%
+        sum)
       
   }
 
@@ -256,7 +260,7 @@ rGreek(10000,"Vega") %>% density %>% plot
 
 ########### Code diephan ; 
 
-PDDRaffinee<-function(r,sigma,T,alpha){
+PDDRaffinee<-function(r,sigma,T,alpha,S0 = 100,Sa = 120){
   J=365
   N=100
   dt=T/J
@@ -282,9 +286,6 @@ PDDRaffinee<-function(r,sigma,T,alpha){
       for(j in 1:N){
         if (Simu[j,i]>Sa||Simu[j,(i+1)]>Sa) condition[j,i]=0
         else{
-          
-          
-######### La formule est ici. 
           probas[j]=exp(-2*log((Simu[j,i]/Sa))*(log(Simu[j,(i+1)]/Sa))/(sigma^2*dt))
           if(runif(1,0,1)<probas[j]){
             condition[j,i]=0
@@ -312,10 +313,11 @@ PDDRaffinee<-function(r,sigma,T,alpha){
     PDDraf[j]=(sum(PDDanraf[,j])/N)
     PDDtotraf=PDDtotraf+exp(-r*j)*PDDraf[j]
   }
-  return(PDDtotraf)
+  #return(PDDtotraf)
+  return(PDDanraf)
 }
-PDDRaffinee(0.015,0.45,1,0.20)
-
+PDDRaffinee(0.015,0.45,1,0.20,100,120) %>% density %>% plot
+PDDRaffinee(0.015,0.45,1,0.20,100,120) %>% mean
 
 
 
