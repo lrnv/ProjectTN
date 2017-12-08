@@ -2,38 +2,155 @@
 title: "Projet de Techniques numériques : Estimation d'une provision pour dépréciation durable"
 author: "LAVERNY Oskar, MARJOLET Pierre, BARRY Dieynaba"
 date: "8 décembre 2017"
-output: html_document
+output:
+  html_document:
+    toc: true # table of content true
+    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    number_sections: true  ## if you want number sections at each table header
 ---
 
 ```{r setup, include=FALSE}
 ####### Chunk permettant de set-up les paramètres par déffaut des chunk suivants. 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE) # Par déffaut, le code n'est pas afficher mais les résultats ( les sorties) le seront. 
 
 #### On en profite pour mettre en place les packages et les seeds.
+library(knitr)
 library(magrittr) # Les générateurs ont une version possible sans magrittr. peut-être qu'on rendra le projet sans ? Histoire de ne pas utiliser de packet, et de pouvoir dire qu'on a tout fait avec rbase. 
 # A voir.
 set.seed(100) # On fixe la seed pour la reproductibilité
+M = 100 # On fixe un nombre de simulations par déffaut
+
+# Jeux de paramètres utilisés :
+# si vous souhaitez changer la valeur d'un paramètre, changez-la ici : l'écriture dans le papier sera elle aussi impactée.
+alpha = c(0.15,0.2) # par déffaut, alpha[1] est utilisé
+naif=TRUE
+S0=100
+Sa=120
+delta_t = 1/365
+r=0.015
+sigma=0.45
+Temps = c(1,2,5,10,15,100) # par déffaut, Temps[1] est utilisé.
+delta_theta=10^(-5)
 
 ### On source les générateurs (utiliser "setwd()" si besoin pour se mettre dans le bon dossier.)
 source("Generateurs.R")
 ```
 
-## Discution sur le sujet. 
+# D
 
 Bla bla bla.
+Ici il faudrais par exemple reprendre le sujet et reposer les dynamiques, les formules de lambda, les récurence, et la PDD au final, son actualisation, les méthode de rafinement par pont brownien, les calcul de sensibilité... La partie Maths quoi.
 
-## Génération de la PDD avec ou sans rafinement 
+Raconter comment on a compris le sujet, histoire que si on c'est planter dans le code on s'en rendre peut-être compte ici.
+
+**Approche de l'implémentation du problème :**
+
+Pour implémenter le problème, nous avons considéré la PDD comme étant une variable aléatoire, et avons donc créer une fonction *rPDD* prenant en paramètre le nombre de simulations voulue. 
+Ainsi, les algorythmes de Monte-Carlo se font juste par la moyenne des simulation, comme pour n'importe quelle variable aléatoire. 
+le générateur est paramètré pour pouvoir utiliser les *Ponts Browniens* ou non, et leur implémentation suit a la lettre ce qui a été fait en TD.
+
+**Choix des paramètres par déffaut**
+
+Pour l'ensemble des simulations, dans le cas ou des re-paramètrages ne sont pas précisés, nous utiliserons les paramètres suivants : 
+
+* $S0=`r S0`$, le prix de l'actif en 0.
+* $Sa=`r Sa`$, la barrière.
+* $\delta_t = \frac{1}{`r 1/delta_t`}$, le pas de discrétisation a l'interieur d'une periode.
+* $T = `r Temps[1]`$, le nombre de periode.
+* $\alpha=`r alpha[1]`$, tel que $(1-\alpha)$ soit le seuil fixé dans l'énoncé.
+* $r=`r r`$, le taux d'intéret.
+* $\sigma=`r sigma`$, la volatilité du sous-jacent.
+* $\Delta_\theta=`r delta_theta`$, la taille des différences finies.
+* $M = `r M`$, le nombre de simulations de monté-carlo.
+
+
+
+# Un seul actif et une seule période
+
+Dans le cadre du modèle posé supra, nous avons estimé la PDD ainsi que la probabilité qu'elle soit positive par une méthoe de monté-carlo naive, ainsi que par une méthode dite *raffinée* inclunant un pont brownien entre les points de discrétisation. 
 
 ```{r generateurs}
-summary(cars)
+# Générateur de PDD : 
+data <- rPDD(1000) %>% density %>% plot
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+## Estimation de la PDD
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+L'estimation de la PDD se fait par monté-carlo, la probabilité qu'elle soit positive aussi. 
+
+### Méthode naive
+#### Description du travail
+
+Ici on peut donner l'algorythme appliqué par le générateur, au moins l'agorythme naif. 
+
+
+#### Résultats : 
+
+**Les jeux de re-paramètrages suivants ont été utilisé : **
+
+* $\alpha = `r alpha[1]`$ ou $\alpha = `r alpha[2]`$
+* $T = `r paste(Temps,sep=",")`$
+
+
+Pour $\alpha = `r alpha[1]`$, on obtient : 
+
+```{r alpha0.2}
+# Fonction d'affichage : 
+affichage <- . %>% 
+  {data.frame(Moyenne = mean(.),ProbaPositif = mean(. > 0))} #%>%
+  #{print(.)}
+
+
+
+# On sort 2 tableau : 
+
+to_apply_alpha <- function(alpha){
+    Temps %>% 
+      lapply(function(x) return(rPDD(M,raffinement=TRUE,alpha=alpha,Temps=x) %>% affichage)) %>% 
+      do.call(rbind,.) %>% 
+      data.frame -> Avec_rafi
+    Temps %>% 
+      lapply(function(x) return(rPDD(M,raffinement=FALSE,alpha=alpha,Temps=x) %>% affichage)) %>% 
+      do.call(rbind,.) %>% 
+      data.frame -> Sans_rafi
+    Avec_rafi$Rafiner <- rep("Oui",length(Temps))
+    Avec_rafi$T <- Temps
+    Sans_rafi$Rafiner <- rep("Non",length(Temps))
+    Sans_rafi$T <- Temps
+  return(rbind.data.frame(Sans_rafi,Avec_rafi))
+}
+
+col.names=c("Temps T","Utilisation du raffinement par pont brownien","PDD obtenue (MC)","Probabilité que la PDD soit positive")
+
+alpha[1] %>% lapply(function(alpha) {
+  df <- to_apply_alpha(alpha)
+  #df$Alpha <- rep(alpha,nrow(df))
+  return(df)
+  })%>%
+  do.call(rbind,.) %>%
+  {data.frame(.)[,c(4,3,1,2)]} %>%
+  kable(col.names=col.names,caption=paste0(c("Résultat pour la première modalité d'alpha"))) # fonction d'affichage
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Pour $\alpha = `r alpha[2]`$, on obtient :
+```{r suite}
+alpha[2] %>% lapply(function(alpha) {
+  df <- to_apply_alpha(alpha)
+  #df$Alpha <- rep(alpha,nrow(df))
+  return(df)
+  })%>%
+  do.call(rbind,.) %>%
+  {data.frame(.)[,c(4,3,1,2)]} %>%
+  kable(col.names=col.names,caption=paste0(c("Résultat pour la seconde modalité d'alpha"))) # fonction d'affichage
+
+
+
+```
+
+#### Analyse des Résultats : 
+
+
+
+
+
