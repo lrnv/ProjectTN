@@ -2,73 +2,14 @@
 library(magrittr)
 set.seed(100) # On fixe la seed pour la reproductibilité
 
+### On source les générateurs (utiliser "setwd()" si besoin pour se mettre dans le bon dossier.)
+source("Generateurs.R")
+
+
 #1 Une seul actif et une seule periode 
 
 #1.1 Estimation de la PDD
 #1.1.1. Methode naive.
-
-# Fonction de simulation de PDD.
-rPDD <- function(n=1,S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE, Temps = 1){
-  
-  # Probabilité de franchissement du seuil dans le cas de pont brownien : 
-  p_k <- function(x,y){ return(exp(-2*log(x/Sa)*log(y/Sa)/(sigma^2*delta_t))) }
-  
-  # Calcul d'une PDD : 
-  rPDD_unitaire <- function(naif,S0,Sa){
-
-    # Chacun des lambdas dépends de la valeur de l'actif en début de periode et 
-    # de la valeur du lambda précédent. Le rete n'est que simulation de l'actif. 
-
-      lambda <- function(S0,lambdaPrecedent = 0){
-          
-        # Commençons par calculer la trajectoire de S : 
-        # S suit une dynamique de black-sholes, donc la solution explicite de BS nous donne :
-              alea <- rnorm(1/delta_t)
-              S <- S0 * cumprod(1+r * delta_t + sigma * sqrt(delta_t) * alea)
-              S <- S*(S > 0) # Histoire que le sous-jacent reste bien positif.
-            
-            # Gestion du raffinement par pont brownien : 
-              p = S^0
-              if(!naif){
-                p <- c(1,(p_k(c(NA,S),c(S,NA))[2:(length(S)-1)]))
-                p <- p > runif((1/delta_t)-1) # donc p = true quand la barrière désactivante n'est pas franchie. 
-                p[1:(floor(1/delta_t)+1)] <- TRUE # Les 6 premiers mois sont toujours valides.
-              }
-            
-            # Maintenant qu'on a la trajectoire de S, calculons la PDD_0 correspondante : 
-              # Approximation du sup sur 6mois : 
-                sup_6_mois <- max(S[(floor(length(S)/2)+1):length(S)])
-              # Calcul final de la PDD : 
-                lambda <-prod(p)*max(Sa-lambdaPrecedent-S[length(S)],0) * (S[length(S)] < (1-alpha) * Sa) * (sup_6_mois < Sa) 
-                return(c(S[length(S)],lambda))
-      }
-      
-      lambda_rez <- list()
-      lambda_rez[[1]] <- lambda(S0,0)
-      if(Temps > 1){
-        for (i in 2:Temps){
-          lambda_rez[[i]] <- lambda(lambda_rez[[i-1]][1],lambda_rez[[i-1]][2])
-          # La formule est juste la même : 
-          # On relance avec un nouveau point de départ S0 correspondant a la derière valeur obtenue au cout d'avent, 
-          # et le lambda précédent qui est 0 au début.
-        }
-      }
-      lambda_rez %>% 
-        lapply(function(x) return(x[[2]])) %>%
-        unlist %>%
-       # tail(1) %>% 
-        multiply_by(exp(-r * (1:Temps))) %>%
-        tail(1) %>%
-        return
-  }
-  
-  # On retourne le résultat :
-  return(rep(NA,n) %>% 
-              sapply(.,function(x){
-                        return(rPDD_unitaire(naif=!raffinement,S0=S0,Sa=Sa))
-                      }
-  ))
-}
 
 # Petite fonction d'affichage : 
 affichage <- . %>% 
@@ -127,113 +68,7 @@ rPDD(1000) %>% density %>% plot
 
 
 
-#1.2 Calcul de la sensibilit? par differences finies
-
-# sensibilite <- function(S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE, greek="Vega", delta_theta= 0.00001){
-#   if (greek == "Vega"){
-#     PDD_plus <-  mean(rPDD(n=10000,sigma = sigma + delta_theta, raffinement = TRUE))
-#     PDD_moins <- mean(rPDD(n=10000,sigma = sigma - delta_theta, raffinement = TRUE))
-#   }
-#   else if (greek == "Rho"){
-#     PDD_plus <-  mean(rPDD(n=10000,r = r + delta_theta, raffinement = TRUE))
-#     PDD_moins <- mean(rPDD(n=10000,r = r - delta_theta, raffinement = TRUE))
-#   }
-#   else if (greek == "Delta"){
-#     PDD_plus <-  mean(rPDD(n=10000,S0 = S0 + delta_theta, raffinement = TRUE))
-#     PDD_moins <- mean(rPDD(n=10000,S0 = S0 - delta_theta, raffinement = TRUE))
-#   }
-#   return((PDD_plus-PDD_moins)/delta_theta)
-# }
-#   
-#   
-# sensibilite()
-# sensibilite(greek = "Rho")
-# sensibilite(greek = "Delta")  
-#   
-  
-
-# Générateur aléatoire des greeques. Le paramètre "greek" doit être "Vega","Rho","Delata" ou "Saga"
-rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,sigma=0.45,raffinement=FALSE, Temps = 1, delta_theta=10^(-5)){
-  
-  # Setup du générateur :
-  p_k <- function(x,y){
-    return(exp(-2*log(x/Sa)*log(y/Sa)/(sigma^2*delta_t)))
-  }
-  naif=!raffinement
-  rPDD_unitaire_pour_vol <- function(S0=S0,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r,sigma=sigma, Temps = Temps,alea){
-    
-    #La différence entre celle la et la précédente est que l'aléa a été fixé
-    # Commençons par calculer la trajectoire de S : 
-    # S suit une dynamique de black-sholes, donc la solution explicite de BS nous donne :
-    
-
-    lambda <- function(S0,lambdaPrecedent = 0){
-        S <- S0 * cumprod(1+r * delta_t + sigma * sqrt(delta_t) * alea)
-        
-        # Gestion du raffinement par pont brownien : 
-        p = S^0
-        if(!naif){
-          p <- c(1,(p_k(c(NA,S),c(S,NA))[2:(length(S)-1)]))
-          p <- p > runif((1/delta_t)-1)
-          p[1:(floor(1/delta_t)+1)] <- TRUE
-        }
-        
-        # Maintenant qu'on a la trajectoire de S, calculons la PDD_0 correspondante : 
-        # Approximation du sup sur 6mois : 
-        sup_6_mois <- max(S[(floor(length(S)/2)+1):length(S)])
-        # Calcul final de la PDD : 
-        lambda <-prod(p)*max(Sa-lambdaPrecedent-S[length(S)],0) * (S[length(S)] < (1-alpha) * Sa) * (sup_6_mois < Sa) 
-        return(c(S[length(S)],lambda))
-    }
-    
-    lambda_rez <- list()
-    lambda_rez[[1]] <- lambda(S0,0)
-    if(Temps > 1){
-      for (i in 2:Temps){
-        lambda_rez[[i]] <- lambda(lambda_rez[[i-1]][1],lambda_rez[[i-1]][2])
-
-        # La formule est juste la même : On relance avec un nouveau point de départ S0 correspondant a la derière valeur obtenue au cout d'avent,
-        # et le lambda précédent qui est 0 au début.
-      }
-    }
-    return(lambda_rez %>% 
-      lapply(function(x) return(x[[2]])) %>%
-      #  tail(1) %>% 
-        unlist %>% 
-        multiply_by(exp(-r * (1:length(.)))) %>%
-        sum)
-      
-  }
-
-  # On a plus qu'a retourner la différence finie pour la greque voulue, le nombre de fois voulue.
-  return(sapply(rep(NA,n),function(x){
-    alea <- rnorm(1/delta_t)
-    if (greek == "Vega"){
-      
-      return((rPDD_unitaire_pour_vol(S0=S0,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma + delta_theta,alea=alea) 
-              - rPDD_unitaire_pour_vol(S0=S0,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma - delta_theta,alea=alea))/(2*delta_theta))
-      
-    } else{ if (greek == "Rho"){
-      
-      return((rPDD_unitaire_pour_vol(S0=S0,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r+ delta_theta, Temps = Temps,sigma = sigma + delta_theta,alea=alea) 
-              - rPDD_unitaire_pour_vol(S0=S0,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r -delta_theta, Temps = Temps,sigma = sigma - delta_theta,alea=alea))/(2*delta_theta))
-      
-    } else{ if (greek == "Delta"){
-      
-      return((rPDD_unitaire_pour_vol(S0=S0+ delta_theta,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma + delta_theta,alea=alea) 
-              - rPDD_unitaire_pour_vol(S0=S0- delta_theta,Sa=Sa,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma - delta_theta,alea=alea))/(2*delta_theta))
-    
-    } else{ if (greek == "Saga"){
-      
-      return((rPDD_unitaire_pour_vol(S0=S0,Sa=Sa + delta_theta,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma,alea=alea) 
-              - rPDD_unitaire_pour_vol(S0=S0,Sa=Sa-delta_theta,delta_t = delta_t,alpha=alpha,r=r, Temps = Temps,sigma = sigma,alea=alea))/(2*delta_theta))
-      
-    }}}}
-  }))
-}
-
-
-
+#1.2 Calcul de la sensibilite par differences finies
 
 rGreek(1000,"Vega") %>% plot
 rGreek(1000,"Vega") %>% mean
