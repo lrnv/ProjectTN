@@ -11,11 +11,13 @@ output:
 
 ```{r setup, include=FALSE}
 ####### Chunk permettant de set-up les paramètres par déffaut des chunk suivants. 
-knitr::opts_chunk$set(echo = FALSE) # Par déffaut, le code n'est pas afficher mais les résultats ( les sorties) le seront. 
+knitr::opts_chunk$set(echo = FALSE,fig.align='center') # Par déffaut, le code n'est pas afficher mais les résultats ( les sorties) le seront. 
 
 #### On en profite pour mettre en place les packages et les seeds.
 library(knitr)
-library(magrittr) # Les générateurs ont une version possible sans magrittr. peut-être qu'on rendra le projet sans ? Histoire de ne pas utiliser de packet, et de pouvoir dire qu'on a tout fait avec rbase. 
+library(magrittr) 
+library(dplyr)
+# Les générateurs ont une version possible sans magrittr. peut-être qu'on rendra le projet sans ? Histoire de ne pas utiliser de packet, et de pouvoir dire qu'on a tout fait avec rbase. 
 # A voir.
 set.seed(100) # On fixe la seed pour la reproductibilité
 M = 100 # On fixe un nombre de simulations par déffaut
@@ -36,7 +38,18 @@ delta_theta=10^(-5)
 source("Generateurs.R")
 ```
 
-# D
+
+# Partie commentaire. 
+
+Tout n'est pas encore fait. j'ai setup les différentes sections, mais ne vous génez pas pour les modifier si vous le souhaiter. Il y a beaucoup a rédiger, quelques graphes a sortr et tout. 
+
+Le partage en deux fichiers ( un fichier générateur que l'on source) sera peut-être a supprimer aussi car YAHIA veut qu'on lui rende juste un raport et le code. On peut donc rendre un rapport ( le format compiler de ce fichier) et ce fichier. Plus simple non ? 
+
+Sur la partie 2 actis, ils sont générés, mais l'étude est encore a faire. De plus je ne suis pas sur d'avoir bien compris ce qu'il voulait. 
+
+Sur la partie un seul actif, il y a encore beacoup a faire aussi. Ne vous genez pas pour modifier ce que j'ai fait, c'est juste une base de travail pour l'instant ! 
+
+# Introduction
 
 Bla bla bla.
 Ici il faudrais par exemple reprendre le sujet et reposer les dynamiques, les formules de lambda, les récurence, et la PDD au final, son actualisation, les méthode de rafinement par pont brownien, les calcul de sensibilité... La partie Maths quoi.
@@ -56,8 +69,8 @@ Pour l'ensemble des simulations, dans le cas ou des re-paramètrages ne sont pas
 * $S0=`r S0`$, le prix de l'actif en 0.
 * $Sa=`r Sa`$, la barrière.
 * $\delta_t = \frac{1}{`r 1/delta_t`}$, le pas de discrétisation a l'interieur d'une periode.
-* $T = `r Temps[1]`$, le nombre de periode.
-* $\alpha=`r alpha[1]`$, tel que $(1-\alpha)$ soit le seuil fixé dans l'énoncé.
+* $T = `r paste(Temps,sep=",")`$, le nombre de periode.
+* $\alpha=`r paste(alpha,sep=",")`$, tel que $(1-\alpha)$ soit le seuil fixé dans l'énoncé.
 * $r=`r r`$, le taux d'intéret.
 * $\sigma=`r sigma`$, la volatilité du sous-jacent.
 * $\Delta_\theta=`r delta_theta`$, la taille des différences finies.
@@ -65,13 +78,22 @@ Pour l'ensemble des simulations, dans le cas ou des re-paramètrages ne sont pas
 
 
 
-# Un seul actif et une seule période
+# Un seul actif
 
-Dans le cadre du modèle posé supra, nous avons estimé la PDD ainsi que la probabilité qu'elle soit positive par une méthoe de monté-carlo naive, ainsi que par une méthode dite *raffinée* inclunant un pont brownien entre les points de discrétisation. 
+Dans le cadre du modèle posé supra, nous avons estimé la PDD ainsi que la probabilité qu'elle soit positive par une méthoe de monté-carlo naive, ainsi que par une méthode dite *raffinée* inclunant un pont brownien entre les points de discrétisation. Le nombre de periode, $T$, varie comme demandé par l'énoncé.
 
-```{r generateurs}
-# Générateur de PDD : 
-data <- rPDD(1000) %>% density %>% plot
+Teaser : Deux graphs de densitée de la PDD pour une seule periode ($T=1$), avec les paramètres par déffaut, avec ou sans pont brownien.
+
+
+```{r graphs,fig.show='hold',fig.width=10, fig.height=5}
+# Générateur de PDD :
+par(mfrow=c(1,2))
+rPDD(M,raffinement=FALSE) %>%
+  density %>%
+  plot(main="Densitée empirique de la PDD, méthode naive.",xlab = "x",ylab="f_{PDD}(x)")
+rPDD(M,raffinement=TRUE) %>%
+  density %>%
+  plot(main="Densitée empirique de la PDD, méthode raffinée",xlab = "x",ylab="f_{PDD}(x)")
 ```
 
 
@@ -96,61 +118,175 @@ Ici on peut donner l'algorythme appliqué par le générateur, au moins l'agoryt
 Pour $\alpha = `r alpha[1]`$, on obtient : 
 
 ```{r alpha0.2}
-# Fonction d'affichage : 
-affichage <- . %>% 
-  {data.frame(Moyenne = mean(.),ProbaPositif = mean(. > 0))} #%>%
-  #{print(.)}
 
-
-
-# On sort 2 tableau : 
-
-to_apply_alpha <- function(alpha){
+# Fonction de calcul des tableaux : 
+to_apply_alpha <- function(alpha,rafinnement=FALSE){
     Temps %>% 
-      lapply(function(x) return(rPDD(M,raffinement=TRUE,alpha=alpha,Temps=x) %>% affichage)) %>% 
+      lapply(function(x) {
+        rPDD(M,raffinement=rafinnement,alpha=alpha,Temps=x) %>% 
+          {data.frame(Moyenne = mean(.),ProbaPositif = mean(. > 0))} %>%
+          return
+        }) %>% 
       do.call(rbind,.) %>% 
-      data.frame -> Avec_rafi
-    Temps %>% 
-      lapply(function(x) return(rPDD(M,raffinement=FALSE,alpha=alpha,Temps=x) %>% affichage)) %>% 
-      do.call(rbind,.) %>% 
-      data.frame -> Sans_rafi
-    Avec_rafi$Rafiner <- rep("Oui",length(Temps))
-    Avec_rafi$T <- Temps
-    Sans_rafi$Rafiner <- rep("Non",length(Temps))
-    Sans_rafi$T <- Temps
-  return(rbind.data.frame(Sans_rafi,Avec_rafi))
+      data.frame %>% 
+      mutate(Rafiner = rep(ifelse(rafinnement,"Oui","Non"),length(Temps)),T = Temps) %>%
+      {data.frame(.)[,c(4,3,1,2)]} %>%
+      return
 }
 
 col.names=c("Temps T","Utilisation du raffinement par pont brownien","PDD obtenue (MC)","Probabilité que la PDD soit positive")
 
-alpha[1] %>% lapply(function(alpha) {
-  df <- to_apply_alpha(alpha)
-  #df$Alpha <- rep(alpha,nrow(df))
-  return(df)
-  })%>%
-  do.call(rbind,.) %>%
-  {data.frame(.)[,c(4,3,1,2)]} %>%
+alpha[1] %>% 
+  to_apply_alpha %>%
   kable(col.names=col.names,caption=paste0(c("Résultat pour la première modalité d'alpha"))) # fonction d'affichage
 ```
 
 Pour $\alpha = `r alpha[2]`$, on obtient :
 ```{r suite}
-alpha[2] %>% lapply(function(alpha) {
-  df <- to_apply_alpha(alpha)
-  #df$Alpha <- rep(alpha,nrow(df))
-  return(df)
-  })%>%
-  do.call(rbind,.) %>%
-  {data.frame(.)[,c(4,3,1,2)]} %>%
+alpha[2] %>% 
+  to_apply_alpha %>%
   kable(col.names=col.names,caption=paste0(c("Résultat pour la seconde modalité d'alpha"))) # fonction d'affichage
-
-
 
 ```
 
 #### Analyse des Résultats : 
 
+Ici il faut analyser les resultats.
+
+
+### Méthode raffinée par Pont brownien. 
+#### Description du travail
+
+Ici on peut donner l'algorythme appliqué par le générateur, expliquer le raffinement par pont brownien,z
+
+
+#### Résultats : 
+
+Pour $\alpha = `r alpha[1]`$, on obtient : 
+
+```{r alpha1.2}
+alpha[1] %>% 
+  to_apply_alpha(rafinnement = TRUE) %>%
+  kable(col.names=col.names,caption=paste0(c("Résultat pour la première modalité d'alpha"))) # fonction d'affichage
+```
+
+Pour $\alpha = `r alpha[2]`$, on obtient :
+```{r suite2}
+alpha[2] %>% 
+  to_apply_alpha(rafinnement = TRUE) %>%
+  kable(col.names=col.names,caption=paste0(c("Résultat pour la seconde modalité d'alpha"))) # fonction d'affichage
+
+```
+
+
+
+#### Analyse des Résultats : 
+
+Ici il faut analyser les resultats.
+
+
+
+## Sensibilité de la PDD : 
+
+On va passer aux calculs de sensibilité de la PDD par rapport a certains paramètres, par différences finies. 
+
+On va donc plotter une fonction qui a un (sigma, r, S0, Sa) donné associe la dérivée partielle de la PDD. 
+
+La méthode utilisée est celle des différences finies. 
+
+**Les jeux de re-paramètrages suivants ont été utilisé : **
+
+* $\alpha = `r alpha[2]`$
+* $T = `r paste(Temps[1:2],sep=",")`$
+
+
+### Par rapport au taux d'interet $r$
+
+```{r Greques}
 
 
 
 
+```
+
+
+
+### Par rapport à la volatilité $\sigma$
+
+
+### Par rapport à la valeur initiale $S_0$
+
+### Par rapport à la barrière $S_a$
+
+
+
+
+
+# Deux actifs 
+
+l'idée est de considéré dexu actifs corrélés, avec uncoefficient de corrélation $\rho \in {0,1,-0.3}$, et via l'algorythme de cholesky généré eux browniens corrélés puis généré sur chacun des browniens les deux actifs, et les deux PDD. 
+
+On pourra étudier pour chaque modalitée la corrélation entre les deux PDD. 
+
+On pourras même si on se chauffe un peu chercher la copule asociée aux deux PDD en fonction du coefficient de corrélation :)
+
+
+## Algorythme de cholesky
+
+ici il faut décrire l'agorythme. 
+
+## Génération des deux PDD corrélées. 
+
+
+Exemple de code pour rho=1 : 
+```{r PDD}
+rPDD2(1000,rho=1) %>% data.frame %>% plot
+
+```
+
+
+Normal : L'alée etant comonotone, i.e les deux actis sont les même, il aurais été biare de ne pas passer la même PDD.
+
+
+pour rho=0 : 
+```{r PDD2}
+rPDD2(1000,rho=0) %>% data.frame %>% plot
+
+```
+
+Ce cout ci on ne lit rien : ce qui est aussi bon signe, les PDD de deux actifs indépendants sont indépendants.
+
+pour rho = 0.9
+```{r PDD3}
+rPDD2(1000,rho=0.9) %>% data.frame %>% plot
+
+```
+
+Ici par contre on voit bien une corrélation positive entre deux actifs positivement corrélé. ca me parais logique mais j'ai aps plus creusé pour l'instant, a voir. 
+
+
+### Principe 
+
+ici décrire comment on re-calcule les PDD sur les actifs de manière jointe. 
+En gros on fait exactement pareilqu'avent, mais on prend pour chaque actif l'aléa marginal (un des deux browniens corrélés)
+
+### Applications
+
+#### $\rho = 0$
+
+#### $\rho = 1$
+
+#### $\rho = -0.3$
+
+## Structure de dépendance obtenue
+
+Ici on va regarder, par exemple, le taux de kendal en fonction de \rho, le \rho de spearman en fonction de \rho, etc... 
+
+On peut même construire nos browniens corrélés en fonction de leur \tau de kendall, et regarder comme évolue le taux de kendall des PDD en fonction du taux de kendall des browniens. 
+
+
+### Sensibilité de la structin sur $\rho$
+
+la on cale les graphes dont on vient de parler avent. 
+
+### Sensibilité de la structure sur les autres paramètres. 

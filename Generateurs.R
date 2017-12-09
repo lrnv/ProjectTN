@@ -85,10 +85,7 @@ rPDD <- function(n=1, S0=100, Sa=120, delta_t = 1/365, alpha=0.2,
     )
   }
   rep(NA,n) %>% sapply(.,to_apply) %>% return
-  # version sans maggritr : 
-  # return(sapply(1:n,to_apply))
 }
-
 
 ##################################################################
 ###################### Fonction rGreek : Générateur des greques de la PDD. (Vega, Rho, Delta, Saga)
@@ -134,7 +131,58 @@ rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.
     )
   }
   rep(NA,n) %>% sapply(.,to_apply) %>% return
-  # version sans maggritr : 
-  # return(sapply(1:n,to_apply))
 
+}
+
+##################################################################
+###################### Fonction rPDD2 : générateur de deux PDD sur deux actif corrélés.
+##################################################################
+rPDD2 <- function(n=1, S0=100, Sa=120, delta_t = 1/365, alpha=0.2, 
+                 r=0.015, sigma=0.45, raffinement=FALSE, Temps = 1,rho=0){
+  
+  # Tout est dans la construction préalable de l'aléa. 
+  # Pour simuler deux actif corrélés, on va tout simlement prendre deux aléas corrélés. 
+  to_apply <- function(x){
+    
+    # Comme expliqué dans le cours, commençons par simuler deux normales corrélés via cholesky : 
+    # cela revient a prendre Z1,Z2 deux N(0,1) indépendantes, et a appliquer la formule suivante : 
+    Y1 <- Z1 <- rnorm(Temps/delta_t)
+    Z2 <- rnorm(Temps/delta_t)
+    Y2 <- rho * Z1 + sqrt(1 - rho^2) * Z2
+    # ainsi, Y1 et Y2 sont deux browniens corrélés. 
+  
+    # on sort donc deux PDD : 
+    return(
+      c(
+        .rPDD_unitaire(
+          naif=!raffinement,
+          S0=S0,
+          Sa=Sa,
+          delta_t = delta_t,
+          alpha=alpha,
+          r=r,
+          sigma=sigma,
+          Temps = Temps,
+          alea=Y1
+        ),
+        .rPDD_unitaire(
+          naif=!raffinement,
+          S0=S0,
+          Sa=Sa,
+          delta_t = delta_t,
+          alpha=alpha,
+          r=r,
+          sigma=sigma,
+          Temps = Temps,
+          alea=Y2
+        )
+      )
+    )
+  }
+  
+  rep(NA,n) %>% 
+    sapply(.,to_apply) %>%
+    t %>%
+    data.frame %>%
+    return
 }
