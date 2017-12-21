@@ -45,15 +45,15 @@ source("Generateurs.R")
 ```
 
 
-# Partie commentaire. (a supprimer avent de faire le rendu)
+# Partie commentaire. (a supprimer avant de faire le rendu)
 
 
 ------------------------------------------------------------------------
 
 
-Tout n'est pas encore fait. j'ai setup les différentes sections, mais ne vous génez pas pour les modifier si vous le souhaiter. Il y a beaucoup a rédiger, quelques graphes a sortr et tout. 
+Tout n'est pas encore fait. j'ai setup les différentes sections, mais ne vous génez pas pour les modifier si vous le souhaitez. Il y a beaucoup a rédiger, quelques graphes a sortir et tout. 
 
-Le partage en deux fichiers ( un fichier générateur que l'on source) sera peut-être a supprimer aussi car YAHIA veut qu'on lui rende juste un raport et le code. On peut donc rendre un rapport ( le format compiler de ce fichier) et ce fichier ( non compiler ). Il faudras donc copier dans le fichier le fichier générateurs plutot que de le sourcer. Pour l'instant, on peut rester avec 2 fichier séparés, c'est plus simple de séparer les deux pour des question de gestion. 
+Le partage en deux fichiers ( un fichier générateur que l'on source) sera peut-être a supprimer aussi car YAHIA veut qu'on lui rende juste un raport et le code. On peut donc rendre un rapport ( le format compilé de ce fichier) et ce fichier ( non compile ). Il faudras donc copier dans le fichier le fichier générateur plutot que de le sourcer. Pour l'instant, on peut rester avec 2 fichier séparés, c'est plus simple de séparer les deux pour des question de gestion. 
 
 Sur la partie 2 actifs, ils sont générés, mais l'étude est encore a faire. De plus je ne suis pas sur d'avoir bien compris ce qu'il voulait. 
 
@@ -70,30 +70,30 @@ Sur la partie un seul actif, il y a encore beacoup a faire aussi. Ne vous genez 
 
 
 Bla bla bla.
-Ici il faudrais par exemple reprendre le sujet et reposer les dynamiques, les formules de lambda, les récurence, et la PDD au final, son actualisation, les méthode de rafinement par pont brownien, les calcul de sensibilité... La partie Maths quoi.
+Ici il faudrait par exemple reprendre le sujet et reposer les dynamiques, les formules de lambda, les récurences, et la PDD au final, son actualisation, les méthode de rafinement par pont brownien, les calculs de sensibilité... La partie Maths quoi.
 
 Raconter comment on a compris le sujet, histoire que si on c'est planter dans le code on s'en rendre peut-être compte ici.
 
 **Approche de l'implémentation du problème :**
 
-Pour implémenter le problème, nous avons considéré la PDD comme étant une variable aléatoire, et avons donc créer une fonction *rPDD* prenant en paramètre le nombre de simulations voulue ainsi que les différents paramètres du problème.
-Ainsi, les algorythmes de Monte-Carlo se font juste par la moyenne des simulation, comme pour n'importe quelle variable aléatoire, ce qui est consistant avec la manière dont R fonctionne. 
-Le générateur est paramètré pour pouvoir utiliser un raffinement par *Ponts Browniens* ou non, et leur implémentation suit à la lettre ce qui a été fait en TD ainsi que le cours.
-La génération de deux actif corrélés s'appuis, de la même manière, sur une fonction *rPDD2* qui est juste une reprise du générateur de base aec des aléas corrélés via une implémentation de la solution de cholesky en dimention 2 vue en cours.
+Pour implémenter le problème, nous avons considéré la PDD comme étant une variable aléatoire, et avons donc créé une fonction *rPDD* prenant en paramètres le nombre de simulations voulu ainsi que les différents paramètres du problème.
+Ainsi, les algorithmes de Monte-Carlo se font juste par la moyenne des simulation, comme pour n'importe quelle variable aléatoire, ce qui est cohérent avec la manière dont R fonctionne. 
+Le générateur est paramètré pour pouvoir utiliser un raffinement par *Ponts Browniens* ou non. L'implémentation des *Ponts Browniens* suit à la lettre ce qui a été fait en TD ainsi que le dans le cours.
+La génération de deux actif corrélés s'appuie, de la même manière, sur une fonction *rPDD2* qui est juste une reprise du générateur de base avec des aléas corrélés via une implémentation de la solution de cholesky en dimention 2 vue en cours.
 
 **Choix des paramètres par déffaut**
 
-Pour l'ensemble des simulations, dans le cas ou des re-paramètrages ne sont pas précisés, nous utiliserons les paramètres suivants par déffaut : 
+Pour l'ensemble des simulations, dans le cas où des re-paramètrages ne sont pas précisés, nous utiliserons les paramètres suivants par défaut : 
 
 * $S0=`r S0`$, le prix de l'actif en 0.
 * $Sa=`r Sa`$, la barrière.
 * $\delta_t = \frac{1}{`r 1/delta_t`}$, le pas de discrétisation a l'interieur d'une periode.
-* $T = `r paste(Temps,sep=",")`$, le nombre de periode.
+* $T = `r paste(Temps,sep=",")`$, le nombre de periodes.
 * $\alpha=`r paste(alpha,sep=",")`$, tel que $(1-\alpha)$ soit le seuil fixé dans l'énoncé.
 * $r=`r r`$, le taux d'intéret.
 * $\sigma=`r sigma`$, la volatilité du sous-jacent.
 * $\Delta_\theta=`r delta_theta`$, la taille des différences finies.
-* $M = `r M`$, le nombre de simulations de monté-carlo.
+* $M = `r M`$, le nombre de simulations de Monte-Carlo.
 
 
 ------------------------------------------------------------------------
@@ -105,9 +105,9 @@ Pour l'ensemble des simulations, dans le cas ou des re-paramètrages ne sont pas
 ------------------------------------------------------------------------
 
 
-Dans le cadre du modèle posé supra, nous avons estimé la PDD ainsi que la probabilité qu'elle soit positive par une méthoe de monté-carlo naive, ainsi que par une méthode dite *raffinée* inclunant un pont brownien entre les points de discrétisation. Le nombre de periode, $T$, varie comme demandé par l'énoncé.
+Dans le cadre du modèle posé supra, nous avons estimé la PDD, ainsi que la probabilité qu'elle soit positive, par une méthode de monté-carlo naive, ainsi que par une méthode dite *raffinée* inclunant un pont brownien entre les points de discrétisation. Le nombre de periodes, $T$, varie comme demandé dans l'énoncé.
 
-**Teaser** : Deux graphs de densitée de la PDD pour une seule periode ($T=1$), avec les paramètres par déffaut, avec ou sans pont brownien.
+**Teaser** : Deux graphs de densitée de la PDD pour une seule periode ($T=1$), avec les paramètres par défaut, avec ou sans pont brownien.
 
 
 ```{r graphs}
@@ -132,7 +132,7 @@ rPDD(M,raffinement=TRUE) %>%
 ------------------------------------------------------------------------
 
 
-L'estimation de la PDD se fait par monté-carlo. On génère la PDD comme une variable aléatoire, et la probabilité qu'elle soit positive est calculer ensuite par monte-carlo.
+L'estimation de la PDD se fait par Monte-Carlo. On génère la PDD comme une variable aléatoire, et la probabilité qu'elle soit positive est calculée ensuite par la méthode de Monte-Carlo.
 
 
 ------------------------------------------------------------------------
@@ -144,16 +144,16 @@ L'estimation de la PDD se fait par monté-carlo. On génère la PDD comme une va
 ------------------------------------------------------------------------
 
 
-La méthode naive consiste a considéré une génération de la valeur de l'actif en chaque point de discrétisation. Ainsi, la barrière sur les 6 drniers mois n'est pas calculer en continue, mais on utilise plutot une approximation par discrétisation simple, comme vu en cours. Cette méthode doit tendre à atteindre la barrière moins souvent qu'il faudrais, et implique donc un biais dans l'estimation. 
+La méthode naive consiste à considérer une génération de la valeur de l'actif en chaque point de discrétisation. Ainsi, la barrière sur les 6 derniers mois n'est pas calculée en continue, mais on utilise plutot une approximation par discrétisation simple, comme vu en cours. Cette méthode doit tendre à atteindre la barrière moins souvent qu'il faudrait, et implique donc un biais dans l'estimation. 
 
 #### Description du travail
 
-Ici on peut donner l'algorythme appliqué par le générateur, au moins l'agorythme naif. 
+Ici on peut donner l'algorithme appliqué par le générateur, au moins l'agorithme naif. 
 
 
 #### Résultats : 
 
-**Les jeux de re-paramètrages suivants ont été utilisé : **
+**Les jeux de re-paramètrages suivants ont été utilisés : **
 
 * $\alpha = `r alpha[1]`$ ou $\alpha = `r alpha[2]`$
 * $T = `r paste(Temps,sep=",")`$
@@ -210,7 +210,7 @@ Ici il faut analyser les resultats.
 
 #### Description du travail
 
-Ici on peut donner l'algorythme appliqué par le générateur, expliquer le raffinement par pont brownien,z
+Ici on peut donner l'algorithme appliqué par le générateur, expliquer le raffinement par pont brownien,z
 
 
 #### Résultats : 
@@ -249,7 +249,7 @@ Ici il faut analyser les resultats.
 ------------------------------------------------------------------------
 
 
-On va passer aux calculs de sensibilité de la PDD par rapport a certains paramètres, par la méthode des différences finies. On va donc plotter une fonction qui a un paramètre ($\sigma$, $r$, $S_0$ ou $S_a$) donné associe la dérivée partielle de la PDD. 
+On va passer aux calculs de sensibilité de la PDD par rapport a certains paramètres, par la méthode des différences finies. On va donc grapher une fonction qui, a un paramètre ($\sigma$, $r$, $S_0$ ou $S_a$) donné, associe la dérivée partielle de la PDD. 
 
 
 **Les jeux de re-paramètrages suivants ont été utilisé : **
@@ -320,7 +320,7 @@ plotting_greeks(greque="Vega",naif=FALSE)
 
 ### Résumé des dérivées obtenues : 
 
-Par monté-carlo, en prenant la moyenne, on obtient les myenne suivantes pour Delta,Saga,Rho et Vega, avec alpha = 2 et T = 1 ou 2.
+Par Monte-Carlo, en prenant la moyenne, on obtient les moyennes suivantes pour Delta,Saga,Rho et Vega, avec alpha = 2 et T = 1 ou 2.
 
 ```{r Greques_summary}
 
@@ -354,11 +354,11 @@ data.frame(Temp = c(1,1,2,2),
 ------------------------------------------------------------------------
 
 
-l'idée est de considéré dexu actifs corrélés, avec uncoefficient de corrélation $\rho \in {0,1,-0.3}$, et via l'algorythme de cholesky généré eux browniens corrélés puis généré sur chacun des browniens les deux actifs, et les deux PDD. 
+L'idée est de considérer deux actifs corrélés, avec un coefficient de corrélation $\rho \in {0,1,-0.3}$, et via l'algorithme de cholesky générer deux browniens corrélés puis générer sur chacun des browniens les deux actifs, et les deux PDD. 
 
-On pourra étudier pour chaque modalitée la corrélation entre les deux PDD. 
+On pourra étudier pour chaque modalité la corrélation entre les deux PDD. 
 
-On pourras même si on se chauffe un peu chercher la copule asociée aux deux PDD en fonction du coefficient de corrélation :)
+On pourra même si on se chauffe un peu chercher la copule asociée aux deux PDD en fonction du coefficient de corrélation :)
 
 
 
@@ -371,7 +371,7 @@ On pourras même si on se chauffe un peu chercher la copule asociée aux deux PD
 ------------------------------------------------------------------------
 
 
-ici il faut décrire l'agorythme. 
+ici il faut décrire l'agorithme. 
 
 
 ------------------------------------------------------------------------
@@ -391,7 +391,7 @@ rPDD2(1000,rho=1) %>% data.frame %>% plot
 ```
 
 
-Normal : L'alée etant comonotone, i.e les deux actis sont les même, il aurais été biare de ne pas passer la même PDD.
+Normal : L'aléa etant comonotone, i.e les deux actifs sont les mêmes, il aurait été bizarre de ne pas passer la même PDD.
 
 
 pour rho=0 : 
@@ -400,7 +400,7 @@ rPDD2(1000,rho=0) %>% data.frame %>% plot
 
 ```
 
-Ce cout ci on ne lit rien : ce qui est aussi bon signe, les PDD de deux actifs indépendants sont indépendants.
+Cette fois, on ne lit rien : ce qui est aussi bon signe, les PDD de deux actifs indépendants sont indépendantes.
 
 pour rho = 0.9
 ```{r PDD3}
@@ -408,13 +408,13 @@ rPDD2(1000,rho=0.9) %>% data.frame %>% plot
 
 ```
 
-Ici par contre on voit bien une corrélation positive entre deux actifs positivement corrélé. ca me parais logique mais j'ai aps plus creusé pour l'instant, a voir. 
+Ici par contre on voit bien une corrélation positive entre deux actifs positivement corrélés. ça me parait logique mais j'ai pas plus creusé pour l'instant, a voir. 
 
 
 ### Principe 
 
 ici décrire comment on re-calcule les PDD sur les actifs de manière jointe. 
-En gros on fait exactement pareilqu'avent, mais on prend pour chaque actif l'aléa marginal (un des deux browniens corrélés)
+En gros on fait exactement pareil qu'avant, mais on prend pour chaque actif l'aléa marginal (un des deux browniens corrélés)
 
 ### Applications
 
@@ -439,8 +439,8 @@ Ici on va regarder, par exemple, le taux de kendal en fonction de \rho, le \rho 
 On peut même construire nos browniens corrélés en fonction de leur \tau de kendall, et regarder comme évolue le taux de kendall des PDD en fonction du taux de kendall des browniens. 
 
 
-### Sensibilité de la structin sur $\rho$
+### Sensibilité de la structure sur $\rho$
 
-la on cale les graphes dont on vient de parler avent. 
+Là on cale les graphiques dont on vient de parler. 
 
 ### Sensibilité de la structure sur les autres paramètres. 
