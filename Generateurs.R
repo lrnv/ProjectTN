@@ -13,11 +13,11 @@
         
         
       # Chacun des lambdas dépends de la valeur de l'actif en début de periode et 
-      # de la valeur du lambda précédent. Le rete n'est que simulation de l'actif. 
+      # de la valeur du lambda précédent. Le reste n'est que simulation de l'actif. 
         lambda <- function(S0,lambdaPrecedent = 0,periode=1){
           
           # Commençons par calculer la trajectoire de S : 
-          # S suit une dynamique de black-sholes, donc la solution explicite de BS nous donne :
+          # S suit une dynamique de black-sholes, on applique donc la solution explicite de Black-scholes :
           PetitAlea <- alea[(1 + (periode-1)/delta_t):(periode/delta_t)]
           S <- S0 * cumprod(1+r * delta_t + sigma * sqrt(delta_t) * PetitAlea)
           S <- S*(S > 0) # Histoire que le sous-jacent reste bien positif.
@@ -94,10 +94,10 @@ rPDD <- function(n=1, S0=100, Sa=120, delta_t = 1/365, alpha=0.2,
 rGreek <- function(n=1,greek="Vega",S0=100,Sa=120,delta_t = 1/365,alpha=0.2,r=0.015,
                    sigma=0.45,raffinement=FALSE, Temps = 1, delta_theta=10^(-5)){
   
-  # Chaque greeque est une dérivée selon un certain paramètre, avec un alea fixé. 
+  # Chaque greque est une dérivée selon un certain paramètre, avec un alea fixé. 
   # on a juste besoin de passer en paramètres de .rPDD_unitaire les mêmes paramètres, 
   # avec un +/- delta_theta pour le paramètre choisis, 
-  # et le même aléa dans les deux fonctions.
+  # et le même aléa dans les deux fonctions. <- important !
   
   # On a plus qu'a retourner la différence finie pour la greque voulue, le nombre de fois voulue.
   

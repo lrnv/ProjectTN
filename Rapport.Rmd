@@ -5,7 +5,7 @@ date: "8 décembre 2017"
 output:
   html_document:
     toc: true # table of content true
-    toc_depth: 5  # upto three depths of headings (specified by #, ## and ###)
+    toc_depth: 5  # upto five depths of headings (specified by #, ##, ###, #### and #####)
     number_sections: true  ## if you want number sections at each table header
 ---
 
